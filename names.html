@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All About NAME</title>
+    <style>
+        /* Full-page container */
+        #gradient-container {
+            background-image: linear-gradient(to right top, #d16ba5, #c777b9, #ba83ca, #aa8fd8, #9a9ae1, #8aa7ec, #79b3f4, #69bff8, #52cffe, #41dfff, #46eefa, #5ffbf1);
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding-top: 20px;
+            box-sizing: border-box;
+        }
+        /* Styles for other elements */
+        h1 {
+            font-size: 2.5em;
+        }
+    </style>
+</head>
+<body>
+    <div id="gradient-container">
+        <h1 id="welcome-text">All About NAME</h1>
+        <div id="live-count">Loading...</div>
+        <div id="insult-container"></div>
+        <div id="google-signin" class="g_id_signin" data-type="standard"></div>
+    </div>
+
+    <!-- Include Google Sign-In API -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
+        import { getDatabase, ref, onValue, runTransaction, set, get } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD5SM1g186YVVAanJdqvmBI7s5Tz2Lil5s",
+            authDomain: "insults-life.firebaseapp.com",
+            projectId: "insults-life",
+            storageBucket: "insults-life.appspot.com",
+            messagingSenderId: "1799791070",
+            appId: "1:1799791070:web:3c887a0b9da57899763d4f",
+            measurementId: "G-J8J6T1S7WP"
+        };
+    
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const database = getDatabase(app);
+
+        // Reference to the overall view counter
+        const countRef = ref(database, "viewCount");
+    
+        function updateLiveCount(newCount) {
+            const liveCountElement = document.getElementById("live-count");
+            liveCountElement.classList.add("fade");
+
+            setTimeout(() => {
+                liveCountElement.innerText = `View Count: ${newCount}`;
+                liveCountElement.classList.remove("fade");
+            }, 500);
+        }
+
+        // Google Sign-In initialization
+        function handleCredentialResponse(response) {
+            const data = jwt_decode(response.credential);
+            const userName = data.name;
+
+            // Update title with user's name
+            document.getElementById("welcome-text").innerText = `All About ${userName}`;
+            document.getElementById("google-signin").style.display = 'none';
+
+            // Start loading insults
+            startInsults();
+        }
+
+        window.onload = function () {
+            google.accounts.id.initialize({
+                client_id: "478838047445-j62o3hhel24b50dbmqts1nuel2b1r0n5.apps.googleusercontent.com",
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.renderButton(
+                document.getElementById("google-signin"),
+                { theme: "outline", size: "large" }
+            );
+        };
+
+        // Function to start loading insults
+        function startInsults() {
+            // Show live view count
+            onValue(countRef, (snapshot) => {
+                updateLiveCount(snapshot.val());
+            });
+            
+            // Generate insults at intervals
+            setInterval(generateInsult, 2000);
+        }
+
+        // Generates insult with view count update
+        const insults = [
+            "You're as useless as the 'ueue' in 'queue'.",
+            "I'd explain it to you, but I left my English-to-Dingbat dictionary at home.",
+            "You're like a software update. Whenever I see you, I think, 'Not now.'",
+            "If I had a dollar for every smart thing you say, I'd be broke.",
+            "You're proof that even evolution makes mistakes."
+        ];
+
+        function generateInsult() {
+            const index = Math.floor(Math.random() * insults.length);
+            const insultDiv = document.createElement('div');
+            insultDiv.className = 'insult';
+            insultDiv.innerHTML = insults[index];
+
+            const insultRef = ref(database, `insultCounts/${index}`);
+            get(insultRef).then((snapshot) => {
+                const currentCount = snapshot.exists() ? snapshot.val() : 0;
+
+                set(insultRef, currentCount + 1).then(() => {
+                    const seenCountDiv = document.createElement('div');
+                    seenCountDiv.className = 'seen-count';
+                    seenCountDiv.innerText = `${currentCount + 1} people have seen this.`;
+                    insultDiv.appendChild(seenCountDiv);
+                });
+            });
+
+            document.getElementById('insult-container').appendChild(insultDiv);
+        }
+    </script>
+</body>
+</html>
